@@ -1,2 +1,3 @@
 # jaltolAI
-GPT implementation of Jaltol - water security tool
+jaltolAI is a prototype project on GPT implementation of 
+Jaltol, open source water security tool.
