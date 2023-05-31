@@ -1,12 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JaltolAI</title>
-</head>
-<body>
-    <h1>JaltolAI - GPT implementation of Jaltol</h1>
-</body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Jaltol A.I.</title>
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='/styles.css') }}" />
+    </head>
+    <body>
+        <div class="container">
+            <img class="logo" id="jaltol_logo" src="{{ url_for('static', path='/jaltol.png') }}" alt="Logo" />
+            <!-- <img class="logo" id="welllabs_logo" src="{{ url_for('static', path='/welllabs.png') }}" alt="Image" /> -->
+            <h1 class="header">Jaltol A.I.</h1>
+            <div class="chat-window" id="chat-window"></div>
+            <!-- <div class="processing-message" id="processing-message">Processing...</div> -->
+            <div class="processing-message" id="processing-message">.</div>
+            <div class="input-container">
+                <input
+                    class="input-field"
+                    type="text"
+                    id="user-input"
+                    placeholder="Type your message"
+                />
+                <button class="send-button" onclick="sendMessage()">
+                    Send
+                </button>
+            </div>
+        </div>
+        <script src="{{ url_for('static', path='/script.js') }}"></script>
+    </body>
 </html>
