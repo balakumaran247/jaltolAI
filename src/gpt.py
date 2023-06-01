@@ -15,4 +15,20 @@ def get_completion(prompt, model="gpt-3.5-turbo", temperature=0):
     return response.choices[0].message["content"]
 
 def gpt_query(input: str):
-    return get_completion(input)
+    prompt = f"""
+    Identify the following details from the input text delimited by \
+    triple backticks and return the extracted details in JSON format as below:
+    location: <the name of the location, including village, District, State>
+    year: <year as integer>
+    
+    input text: ```{input}```
+    """
+    import json
+    input_json = json.loads(get_completion(prompt))
+    from src.utils import LocationDetails
+    from src.components.precipitation import Precipitation
+    ll = LocationDetails(input_json['location'])
+    ee_location = ll.ee_obj()
+    rain = Precipitation(ee_location, input_json['year'])
+    return f"The Precipitation over {input_json['location']} for the hydrological \
+year {input_json['year']} is {rain.handler()} mm."
