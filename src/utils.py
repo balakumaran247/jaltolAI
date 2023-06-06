@@ -19,6 +19,8 @@ def fetch_scale(asset_path: str) -> float:
 class JaltolInput(BaseModel):
     user: str
 
+class JaltolOutput(BaseModel):
+    text: str
 
 class LocationDetails:
     def __init__(self, location_name) -> None:
