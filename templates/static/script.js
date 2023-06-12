@@ -31,7 +31,7 @@ async function sendMessage() {
     });
 
     var data = await response.json();
-    botResponse = data;
+    botResponse = data['text']
     } catch(error) {
     // Handle any errors
     console.error('Error:', error);
