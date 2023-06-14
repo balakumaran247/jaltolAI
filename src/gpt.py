@@ -42,72 +42,107 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chains.conversation.memory import ConversationSummaryBufferMemory
 from langchain.agents import initialize_agent, AgentExecutor
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
+from langchain.agents import AgentType
 from src.utils import tools_list
 from src.prompt import sys_msg, text_msg, data_msg, map_msg, chart_msg
-from typing import List, Any
+from typing import List, Any, Dict
+import logging
+from src.exception import log_e
 
+logger = logging.getLogger(__name__)
 
 class ConversationHandler:
     def __init__(self, history) -> None:
         self.llm = self.create_llm()
-        self.history = history or self.create_memory()
+        self.history = history if history else self.create_memory()
         self.tools = tools_list
         self.sys_msg = sys_msg
         self.agent = self.create_agent()
         self.output_parser = self.create_output_parser()
-        if not self.history:
+        if not history:
             self.create_prompt()
 
     def create_llm(self) -> ChatOpenAI:
-        return ChatOpenAI(
-            openai_api_key=os.getenv("GPT_TOKEN"),
-            temperature=0,
-            model_name="gpt-3.5-turbo",
-        )
+        try:
+            return ChatOpenAI(
+                openai_api_key=os.getenv("GPT_TOKEN"),
+                temperature=0,
+                model_name="gpt-3.5-turbo",
+            )
+        except Exception as e:
+            logger.exception(log_e(e))
 
     def create_memory(self) -> ConversationSummaryBufferMemory:
-        return ConversationSummaryBufferMemory(llm=self.llm, max_token_limit=300)
+        try:
+            return ConversationSummaryBufferMemory(
+                llm=self.llm,
+                max_token_limit=300,
+                memory_key='chat_history',
+                input_key='input',
+                human_prefix='Human',
+                ai_prefix='AI',
+                return_messages=True)
+        except Exception as e:
+            logger.exception(log_e(e))
 
     def create_agent(self) -> AgentExecutor:
-        return initialize_agent(
-            agent="chat-conversational-react-description",
-            tools=self.tools,
-            llm=self.llm,
-            verbose=False,
-            max_iterations=3,
-            early_stopping_method="force",  # 'generate',
-            handle_parsing_errors=True,
-            memory=self.history,
-        )
+        try:
+            return initialize_agent(
+                    agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
+                    tools=self.tools,
+                    llm=self.llm,
+                    verbose=False,
+                    max_iterations=3,
+                    early_stopping_method="force",  # 'generate',
+                    handle_parsing_errors=True,
+                    memory=self.history,
+                )
+        except Exception as e:
+            logger.exception(log_e(e))
 
     @classmethod
     def create_output_parser(cls) -> StructuredOutputParser:
-        text_schema = ResponseSchema(
-            name="text",
-            description=text_msg)
-        data_schema = ResponseSchema(
-            name="data",
-            description=data_msg)
-        map_schema = ResponseSchema(
-            name="map",
-            description=map_msg)
-        chart_schema = ResponseSchema(
-            name="chart",
-            description=chart_msg)
+        try:
+            text_schema = ResponseSchema(
+                name="text",
+                description=text_msg)
+            data_schema = ResponseSchema(
+                name="data",
+                description=data_msg)
+            map_schema = ResponseSchema(
+                name="map",
+                description=map_msg)
+            chart_schema = ResponseSchema(
+                name="chart",
+                description=chart_msg)
 
-        response_schemas = [text_schema, 
-                            data_schema,
-                            map_schema,
-                            chart_schema]
-        
-        return StructuredOutputParser.from_response_schemas(response_schemas)
+            response_schemas = [text_schema,
+                                data_schema,
+                                map_schema,
+                                chart_schema]
+            
+            return StructuredOutputParser.from_response_schemas(response_schemas)
+        except Exception as e:
+            logger.exception(log_e(e))
     
     def create_prompt(self) -> None:
-        format_instructions = self.output_parser.get_format_instructions()
-        prompt = self.agent.agent.create_prompt(system_message = sys_msg, tools = self.tools)
-        messages = prompt.format_prompt(output_format = format_instructions)
-        self.agent.agent.llm_chain.prompt = messages
+        try:
+            format_instructions = self.output_parser.get_format_instructions()
+            logger.debug(f'parser_format_instructions: {format_instructions}')
+            prompt = self.agent.agent.create_prompt(system_message = sys_msg, tools = self.tools)
+            logger.debug(f'system_prompt: {prompt}')
+            # messages = prompt.format_prompt(output_format = format_instructions, chat_history=[])
+            messages = prompt
+            logger.debug(f'agent_prompt: {messages}')
+            self.agent.agent.llm_chain.prompt = messages
+        except Exception as e:
+            logger.exception(log_e(e))
 
-    def query(self, input: str):
-        response = self.agent(input)
-        return self.output_parser.parse(response)#.content)
+    def query(self, input: str) -> Dict[str, str]:
+        try:
+            response = self.agent.run(input)
+            logger.debug(f'response from agent: {response}')
+            # return self.output_parser.parse(response)#.content)
+            return response
+        except Exception as e:
+            logger.exception(log_e(e))
