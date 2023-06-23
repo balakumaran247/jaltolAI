@@ -1,11 +1,18 @@
+from langchain.tools import BaseTool
 from src.utils import JaltolBaseClass, EEAsset
+from src.prompt import single_year_desc
+from src.utils import LocationDetails
+from typing import Dict
 import ee
 
 ee.Initialize()
-_precipitation = "users/jaltolwelllabs/IMD/rain"
+
+topic = "Precipitation or Rainfall"
 
 
 class Precipitation(JaltolBaseClass):
+    PRECIPITATION = "users/jaltolwelllabs/IMD/rain"
+
     def __init__(
         self,
         location: ee.Geometry,
@@ -19,7 +26,7 @@ class Precipitation(JaltolBaseClass):
         self.temporal_span = temporal_span
         self.temporal_step = temporal_step
         self.temporal_reducer = temporal_reducer
-        self.precipitation = EEAsset(_precipitation)
+        self.precipitation = EEAsset(self.PRECIPITATION)
 
     def handler(self):
         start, end = self.date_gen(self.year, self.temporal_span, self.temporal_step)
@@ -35,3 +42,18 @@ class Precipitation(JaltolBaseClass):
         )
         rain = reduced_dict["features"][0]["properties"]["mean"]
         return round(rain, 2)
+
+
+class PrecipitationSingleHydrologicalYearSingleVillage(BaseTool):
+    name = "Precipitation_Hydrological_Year_Single_Village"
+    description = single_year_desc.format(topic, "specific village", "hydrological")
+
+    def _run(self, location: str, year: int) -> Dict[str, Dict[str, Dict[int, float]]]:
+        ll = LocationDetails(location)
+        ee_location = ll.ee_obj()
+        rain = Precipitation(ee_location, year)
+        value = rain.handler()
+        return {topic: {location: {year: value}}}
+
+    def _arun(self, location: str, year: int):
+        raise NotImplementedError("This tool does not support async")
