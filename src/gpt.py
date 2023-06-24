@@ -39,110 +39,89 @@ year {input_json['year']} is {rain.handler()} mm."
 
 
 from langchain.chat_models import ChatOpenAI
+from langchain.prompts import MessagesPlaceholder
 from langchain.chains.conversation.memory import ConversationSummaryBufferMemory
 from langchain.agents import initialize_agent, AgentExecutor
-from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain.agents import AgentType
-from src.utils import tools_list
-from src.prompt import sys_msg, text_msg, data_msg, map_msg, chart_msg
-from typing import List, Any, Dict
+from src.prompt import sys_msg
 import logging
+import pickle
 from src.exception import log_e
+import src.components.precipitation as precipitaion
+import src.components.evapotranspiration as evapotranspiration
+
+topics_list = [
+    precipitaion.topic,
+    evapotranspiration.topic,
+]
+
+tools_list = [
+    precipitaion.PrecipitationSingleHydrologicalYearSingleVillage(),
+    evapotranspiration.EvapotranspirationSingleHydrologicalYearSingleVillage(),
+]
 
 logger = logging.getLogger(__name__)
+
 
 class ConversationHandler:
     def __init__(self, history) -> None:
         self.llm = self.create_llm()
-        self.history = history if history else self.create_memory()
+        self.chat_history = MessagesPlaceholder(variable_name="chat_history")
+        self.memory = self.read_memory(history) if history else self.create_memory()
         self.tools = tools_list
-        self.sys_msg = sys_msg
+        self.sys_msg = sys_msg.format("\n".join(topics_list))
         self.agent = self.create_agent()
-        self.output_parser = self.create_output_parser()
         if not history:
             self.create_prompt()
 
     def create_llm(self) -> ChatOpenAI:
-        try:
-            return ChatOpenAI(
-                openai_api_key=os.getenv("GPT_TOKEN"),
-                temperature=0,
-                model_name="gpt-3.5-turbo",
-            )
-        except Exception as e:
-            logger.exception(log_e(e))
+        return ChatOpenAI(
+            openai_api_key=os.getenv("GPT_TOKEN"),
+            temperature=0,
+            model_name=os.getenv("LLM_MODEL"),
+        )
 
     def create_memory(self) -> ConversationSummaryBufferMemory:
-        try:
-            return ConversationSummaryBufferMemory(
-                llm=self.llm,
-                max_token_limit=300,
-                memory_key='chat_history',
-                input_key='input',
-                human_prefix='Human',
-                ai_prefix='AI',
-                return_messages=True)
-        except Exception as e:
-            logger.exception(log_e(e))
+        return ConversationSummaryBufferMemory(
+            llm=self.llm,
+            max_token_limit=300,
+            memory_key="chat_history",
+            return_messages=True,
+        )
 
     def create_agent(self) -> AgentExecutor:
-        try:
-            return initialize_agent(
-                    agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
-                    tools=self.tools,
-                    llm=self.llm,
-                    verbose=False,
-                    max_iterations=3,
-                    early_stopping_method="force",  # 'generate',
-                    handle_parsing_errors=True,
-                    memory=self.history,
-                )
-        except Exception as e:
-            logger.exception(log_e(e))
+        return initialize_agent(
+            agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
+            tools=self.tools,
+            llm=self.llm,
+            verbose=False,
+            max_iterations=3,
+            early_stopping_method="force",  # 'generate',
+            handle_parsing_errors=True,
+            memory=self.memory,
+            agent_kwargs={
+                "memory_prompts": [self.chat_history],
+                "input_variables": ["input", "agent_scratchpad", "chat_history"],
+            },
+        )
 
-    @classmethod
-    def create_output_parser(cls) -> StructuredOutputParser:
-        try:
-            text_schema = ResponseSchema(
-                name="text",
-                description=text_msg)
-            data_schema = ResponseSchema(
-                name="data",
-                description=data_msg)
-            map_schema = ResponseSchema(
-                name="map",
-                description=map_msg)
-            chart_schema = ResponseSchema(
-                name="chart",
-                description=chart_msg)
-
-            response_schemas = [text_schema,
-                                data_schema,
-                                map_schema,
-                                chart_schema]
-            
-            return StructuredOutputParser.from_response_schemas(response_schemas)
-        except Exception as e:
-            logger.exception(log_e(e))
-    
     def create_prompt(self) -> None:
         try:
-            format_instructions = self.output_parser.get_format_instructions()
-            logger.debug(f'parser_format_instructions: {format_instructions}')
-            prompt = self.agent.agent.create_prompt(system_message = sys_msg, tools = self.tools)
-            logger.debug(f'system_prompt: {prompt}')
-            # messages = prompt.format_prompt(output_format = format_instructions, chat_history=[])
-            messages = prompt
-            logger.debug(f'agent_prompt: {messages}')
-            self.agent.agent.llm_chain.prompt = messages
+            prompt = self.agent.agent.create_prompt(
+                tools=self.tools, prefix=self.sys_msg
+            )
+            self.agent.agent.llm_chain.prompt = prompt
         except Exception as e:
             logger.exception(log_e(e))
 
-    def query(self, input: str) -> Dict[str, str]:
-        try:
-            response = self.agent.run(input)
-            logger.debug(f'response from agent: {response}')
-            # return self.output_parser.parse(response)#.content)
-            return response
-        except Exception as e:
-            logger.exception(log_e(e))
+    def read_memory(self, serialized_memory):
+        return pickle.loads(serialized_memory)
+
+    @property
+    def serialized_memory(self):
+        return pickle.dumps(self.agent.memory.buffer)
+
+    def query(self, input: str) -> str:
+        response = self.agent.run(input)
+        logger.debug(f"response from agent: {response}")
+        return response
