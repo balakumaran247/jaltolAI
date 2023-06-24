@@ -13,16 +13,9 @@ Assistant should not generate any response on its own, if the Assistant \
 does not have response for user's queries using the tools provided, \
 Assistant should Apologise and respond with inability to answer.
 
-Output of the tools will be in the format delimited by triple backticks:
-```
-{
-    topic: {
-        location: {
-            year: value
-        }
-    }
-}
-```
+Output of the tools will be in the format:
+Key value pair with key "topic" and value as dictionary with key "location" \
+and value as dictionary with key "year" and value as tool's output.
 
 You have access to the following tools:
 """
