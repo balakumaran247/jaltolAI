@@ -115,11 +115,16 @@ class ConversationHandler:
             logger.exception(log_e(e))
 
     def read_memory(self, serialized_memory):
-        return pickle.loads(serialized_memory)
+        encoded = serialized_memory.encode('utf-8').replace(b'\xc2',b'')
+        buffer = pickle.loads(encoded)
+        memory = self.create_memory()
+        memory.chat_memory.messages = buffer
+        return memory
 
     @property
     def serialized_memory(self):
-        return pickle.dumps(self.agent.memory.buffer)
+        pkld = pickle.dumps(self.memory.chat_memory.messages)
+        return pkld.decode('unicode_escape')
 
     def query(self, input: str) -> str:
         response = self.agent.run(input)
