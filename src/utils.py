@@ -1,23 +1,12 @@
 from pydantic import BaseModel
 from dataclasses import dataclass, field
 from geopy.geocoders import Nominatim
-import src.components.precipitation as precipitaion
-import src.components.evapotranspiration as evapotranspiration
 from typing import List, Union, Generator, Tuple, Dict, Any
 import ee
 
 # Initialize GEE library
 ee.Initialize()
 
-topics_list = [
-    precipitaion.topic,
-    evapotranspiration.topic,
-]
-
-tools_list = [
-    precipitaion.PrecipitationSingleHydrologicalYearSingleVillage(),
-    evapotranspiration.EvapotranspirationSingleHydrologicalYearSingleVillage(),
-]
 
 class JaltolInput(BaseModel):
     user: str
