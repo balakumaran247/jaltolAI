@@ -12,6 +12,7 @@
 -   added projection and scale of assets as classmethod
 -   added SessionMiddleware to persist memory
 -   added AgentHandler to handle memory, tools and agent
+-   agent type is STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION
 -   added Prompt module with system and single village, year tool description
 -   added logging
 -   added custom basic exception module for exception as formatted string
